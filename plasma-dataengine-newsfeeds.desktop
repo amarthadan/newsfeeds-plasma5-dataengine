@@ -1,0 +1,17 @@
+[Desktop Entry]
+Name=News Feeds Engine
+Comment=News Feeds Engine
+Type=Service
+
+X-KDE-ServiceTypes=Plasma/DataEngine
+X-KDE-Library=plasma_engine_newsfeeds
+X-Plasma-EngineName=newsfeeds
+X-KDE-PluginInfo-Author=Michal Kimle
+X-KDE-PluginInfo-Email=kimle.michal@gmail.com
+X-KDE-PluginInfo-Name=newsfeeds
+X-KDE-PluginInfo-Version=0.1
+X-KDE-PluginInfo-Website=http://plasma.kde.org/
+X-KDE-PluginInfo-Category=
+X-KDE-PluginInfo-Depends=
+X-KDE-PluginInfo-License=LGPL
+X-KDE-PluginInfo-EnabledByDefault=true
