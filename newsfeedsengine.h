@@ -77,6 +77,9 @@ private:
     QVariantList getCategories(QList<Syndication::CategoryPtr> categories);
     QVariantList getItems(QList<Syndication::ItemPtr> items);
     QVariantList getEnclosures(QList<Syndication::EnclosurePtr> enclosures);
+
+private:
+    bool    loading;
 };
 
 #endif // NEWSFEEDSENGINE_H

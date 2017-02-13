@@ -33,7 +33,7 @@
 
 #include <Syndication/Image>
 
-#define MINIMUM_INTERVAL 60000
+#define MINIMUM_INTERVAL 1000
 
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args)
@@ -69,8 +69,6 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
     loaderSourceMap.insert(loader, source);
     loader->loadFrom(QUrl(source));
 
-    setData(source, QStringLiteral("Ready"), false);
-
     return true;
 }
 
@@ -94,9 +92,6 @@ void NewsFeedsEngine::feedReady(Syndication::Loader* loader, Syndication::FeedPt
     QVariantList categories = getCategories(feed->categories());
     QVariantList items = getItems(feed->items());
 
-    KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
-    connect(job, SIGNAL(result(KJob*)), this, SLOT(iconReady(KJob*)));
-
     setData(source, QStringLiteral("Title"), title);
     setData(source, QStringLiteral("Link"), link);
     setData(source, QStringLiteral("Description"), description);
@@ -105,7 +100,9 @@ void NewsFeedsEngine::feedReady(Syndication::Loader* loader, Syndication::FeedPt
     setData(source, QStringLiteral("Authors"), authors);
     setData(source, QStringLiteral("Categories"), categories);
     setData(source, QStringLiteral("Items"), items);
-    setData(source, QStringLiteral("Ready"), true);
+
+    KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
+    connect(job, SIGNAL(result(KJob*)), this, SLOT(iconReady(KJob*)));
 }
 
 void NewsFeedsEngine::iconReady(KJob* kjob)
@@ -114,7 +111,12 @@ void NewsFeedsEngine::iconReady(KJob* kjob)
     const QString iconFile = job->iconFile();
     const QString url = job->hostUrl().toString().toLower();
 
-    setData(url, QStringLiteral("Image"), iconFile);
+    if (!iconFile.isNull() && !iconFile.isEmpty())
+    {
+        setData(url, QStringLiteral("Image"), iconFile);
+    }
+
+    setData(url, QStringLiteral("FeedReady"), true);
 }
 
 QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)
