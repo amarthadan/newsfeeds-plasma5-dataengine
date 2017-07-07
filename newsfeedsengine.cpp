@@ -33,7 +33,7 @@
 
 #include <Syndication/Image>
 
-#define MINIMUM_INTERVAL 60000
+#define MINIMUM_INTERVAL 5000 // 5 seconds
 
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args)
@@ -57,64 +57,92 @@ bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
     // first time a source is requested, so we just call
     // updateSourceEvent().
     setData(source, Data());
+    loadingNews.removeAll(source);
+    loadingIcons.removeAll(source);
     return updateSourceEvent(source);
 }
 
 bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 {
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::updateSourceEvent";
+
+    if (loadingNews.contains(source) || loadingIcons.contains(source)) {
+      qCDebug(NEWSFEEDSENGINE) << "Source" << source << "still loading";
+      return true;
+    }
+
+    // load news
+    qCDebug(NEWSFEEDSENGINE) << "Loading news for source" << source;
     Syndication::Loader *loader = Syndication::Loader::create();
     connect(loader, SIGNAL(loadingComplete(Syndication::Loader*,Syndication::FeedPtr,Syndication::ErrorCode)),
             this, SLOT(feedReady(Syndication::Loader*,Syndication::FeedPtr,Syndication::ErrorCode)));
 
     loaderSourceMap.insert(loader, source);
+    loadingNews << source;
     loader->loadFrom(QUrl(source));
 
-    setData(source, QStringLiteral("Ready"), false);
+    //load icon
+    Plasma::DataContainer *container = containerForSource(source);
+    if (container->data().value("Image") != "NO_ICON") {
+      qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
+      loadingIcons << source;
+      KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
+      connect(job, SIGNAL(result(KJob*)), this, SLOT(iconReady(KJob*)));
+    }
 
     return true;
 }
 
 void NewsFeedsEngine::feedReady(Syndication::Loader* loader, Syndication::FeedPtr feed, Syndication::ErrorCode errorCode)
 {
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::feedReady";
+
     const QString source = loaderSourceMap.take(loader);
 
     if (errorCode != Syndication::Success) {
-        setData(source, QStringLiteral("Title"), i18n("Fetching feed failed."));
-        setData(source, QStringLiteral("Link"), source);
-        return;
+      setData(source, QStringLiteral("Title"), i18n("Fetching feed failed."));
+      setData(source, QStringLiteral("Link"), source);
+    } else {
+      QString title = feed->title();
+      QString link = feed->link();
+      QString description = feed->description();
+      QString language = feed->language();
+      QString copyright = feed->copyright();
+
+      QVariantList authors = getAuthors(feed->authors());
+      QVariantList categories = getCategories(feed->categories());
+      QVariantList items = getItems(feed->items());
+
+      setData(source, QStringLiteral("Title"), title);
+      setData(source, QStringLiteral("Link"), link);
+      setData(source, QStringLiteral("Description"), description);
+      setData(source, QStringLiteral("Language"), language);
+      setData(source, QStringLiteral("Copyright"), copyright);
+      setData(source, QStringLiteral("Authors"), authors);
+      setData(source, QStringLiteral("Categories"), categories);
+      setData(source, QStringLiteral("Items"), items);
     }
 
-    QString title = feed->title();
-    QString link = feed->link();
-    QString description = feed->description();
-    QString language = feed->language();
-    QString copyright = feed->copyright();
-
-    QVariantList authors = getAuthors(feed->authors());
-    QVariantList categories = getCategories(feed->categories());
-    QVariantList items = getItems(feed->items());
-
-    KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
-    connect(job, SIGNAL(result(KJob*)), this, SLOT(iconReady(KJob*)));
-
-    setData(source, QStringLiteral("Title"), title);
-    setData(source, QStringLiteral("Link"), link);
-    setData(source, QStringLiteral("Description"), description);
-    setData(source, QStringLiteral("Language"), language);
-    setData(source, QStringLiteral("Copyright"), copyright);
-    setData(source, QStringLiteral("Authors"), authors);
-    setData(source, QStringLiteral("Categories"), categories);
-    setData(source, QStringLiteral("Items"), items);
-    setData(source, QStringLiteral("Ready"), true);
+    loadingNews.removeAll(source);
 }
 
 void NewsFeedsEngine::iconReady(KJob* kjob)
 {
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconReady";
+
     KIO::FavIconRequestJob *job = static_cast<KIO::FavIconRequestJob *>(kjob);
-    const QString iconFile = job->iconFile();
+
     const QString url = job->hostUrl().toString().toLower();
+    QString iconFile;
+    if (job->error() != 0) {
+      qCDebug(NEWSFEEDSENGINE) << "Error during icon download, setting 'NO_ICON' flag";
+      iconFile = "NO_ICON";
+    } else {
+      iconFile = job->iconFile();
+    }
 
     setData(url, QStringLiteral("Image"), iconFile);
+    loadingIcons.removeAll(url);
 }
 
 QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)
@@ -228,5 +256,6 @@ void NewsFeedsEngine::networkStatusChanged(bool isOnline)
 // The second argument is the name of the class in
 // your plugin that derives from Plasma::DataEngine
 K_EXPORT_PLASMA_DATAENGINE_WITH_JSON(newsfeeds, NewsFeedsEngine, "plasma-dataengine-newsfeeds.json")
+Q_LOGGING_CATEGORY(NEWSFEEDSENGINE, "newsfeedsengine")
 
 #include "newsfeedsengine.moc"

@@ -30,6 +30,7 @@
 #include <QHash>
 #include <QVariantList>
 #include <QList>
+#include <QLoggingCategory>
 
 #include <Syndication/Loader>
 #include <Syndication/Feed>
@@ -71,6 +72,8 @@ private Q_SLOTS:
 
 private:
     QHash<Syndication::Loader*, QString> loaderSourceMap;
+    QStringList loadingNews;
+    QStringList loadingIcons;
     QNetworkConfigurationManager networkConfigurationManager;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);
@@ -78,5 +81,7 @@ private:
     QVariantList getItems(QList<Syndication::ItemPtr> items);
     QVariantList getEnclosures(QList<Syndication::EnclosurePtr> enclosures);
 };
+
+Q_DECLARE_LOGGING_CATEGORY(NEWSFEEDSENGINE)
 
 #endif // NEWSFEEDSENGINE_H
