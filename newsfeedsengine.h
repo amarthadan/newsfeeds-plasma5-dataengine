@@ -74,6 +74,7 @@ private:
     QHash<Syndication::Loader*, QString> loaderSourceMap;
     QStringList loadingNews;
     QStringList loadingIcons;
+    QStringList sourcesWithIcon;
     QNetworkConfigurationManager networkConfigurationManager;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);

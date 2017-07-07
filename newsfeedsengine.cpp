@@ -21,8 +21,6 @@
 
 #include "newsfeedsengine.h"
 
-#include <Plasma/DataContainer>
-
 #include <QUrl>
 #include <QString>
 #include <QVariant>
@@ -59,6 +57,7 @@ bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
     setData(source, Data());
     loadingNews.removeAll(source);
     loadingIcons.removeAll(source);
+    sourcesWithIcon.removeAll(source);
     return updateSourceEvent(source);
 }
 
@@ -82,8 +81,7 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
     loader->loadFrom(QUrl(source));
 
     //load icon
-    Plasma::DataContainer *container = containerForSource(source);
-    if (container->data().value("Image") != "NO_ICON") {
+    if (!sourcesWithIcon.contains(source)) {
       qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
       loadingIcons << source;
       KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
@@ -142,6 +140,7 @@ void NewsFeedsEngine::iconReady(KJob* kjob)
     }
 
     setData(url, QStringLiteral("Image"), iconFile);
+    sourcesWithIcon << url;
     loadingIcons.removeAll(url);
 }
 
