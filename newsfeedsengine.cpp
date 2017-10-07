@@ -37,6 +37,8 @@ const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::m
 
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args)
+    , networkConfigurationManager(this)
+    , iconsExpirationTimer(this)
 {
     // We ignore any arguments - data engines do not have much use for them
     Q_UNUSED(args)
@@ -51,9 +53,8 @@ NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
             this, &NewsFeedsEngine::networkStatusChanged);
 
     // Icons considered expired when timer expires
-    iconsExpirationTimer = std::make_unique<QTimer>(this);
-    connect(iconsExpirationTimer.get(), &QTimer::timeout, this, &NewsFeedsEngine::iconsExpired);
-    iconsExpirationTimer->start(iconsExpirationTime);
+    connect(&iconsExpirationTimer, &QTimer::timeout, this, &NewsFeedsEngine::iconsExpired);
+    iconsExpirationTimer.start(iconsExpirationTime);
 }
 
 bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
@@ -125,18 +126,14 @@ void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/,
     }
     else
     {
-        QVariantList authors = getAuthors(feed->authors());
-        QVariantList categories = getCategories(feed->categories());
-        QVariantList items = getItems(feed->items());
-
-        setData(source, QStringLiteral("Title"), feed->title());
-        setData(source, QStringLiteral("Link"), feed->link());
+        setData(source, QStringLiteral("Title"),       feed->title());
+        setData(source, QStringLiteral("Link"),        feed->link());
         setData(source, QStringLiteral("Description"), feed->description());
-        setData(source, QStringLiteral("Language"), feed->language());
-        setData(source, QStringLiteral("Copyright"), feed->copyright());
-        setData(source, QStringLiteral("Authors"), authors);
-        setData(source, QStringLiteral("Categories"), categories);
-        setData(source, QStringLiteral("Items"), items);
+        setData(source, QStringLiteral("Language"),    feed->language());
+        setData(source, QStringLiteral("Copyright"),   feed->copyright());
+        setData(source, QStringLiteral("Authors"),     getAuthors(feed->authors()));
+        setData(source, QStringLiteral("Categories"),  getCategories(feed->categories()));
+        setData(source, QStringLiteral("Items"),       getItems(feed->items()));
     }
 
 
@@ -155,12 +152,12 @@ void NewsFeedsEngine::iconReady(QString source, KJob* kjob)
 
         if (job->error() != 0)
         {
-          qCDebug(NEWSFEEDSENGINE) << "Error during icon download, setting 'NO_ICON' flag";
-          iconFile = "NO_ICON";
+            qCDebug(NEWSFEEDSENGINE) << "Error during icon download, setting 'NO_ICON' flag";
+            iconFile = "NO_ICON";
         }
         else
         {
-          iconFile = job->iconFile();
+            iconFile = job->iconFile();
         }
 
         setData(source, QStringLiteral("Image"), iconFile);
@@ -197,7 +194,8 @@ QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)
 QVariantList NewsFeedsEngine::getCategories(QList<Syndication::CategoryPtr> categories)
 {
     QVariantList categoriesData;
-    foreach (const Syndication::CategoryPtr &category, categories) {
+    for(const auto& category: categories)
+    {
         QMap<QString, QVariant> categoryData;
 
         if (category->isNull() || (category->term().isNull() && category->scheme().isNull() && category->label().isNull())) {
@@ -217,7 +215,8 @@ QVariantList NewsFeedsEngine::getCategories(QList<Syndication::CategoryPtr> cate
 QVariantList NewsFeedsEngine::getEnclosures(QList<Syndication::EnclosurePtr> enclosures)
 {
     QVariantList enclosuresData;
-    foreach (const Syndication::EnclosurePtr &enclosure, enclosures) {
+    for(const auto& enclosure: enclosures)
+    {
         QMap<QString, QVariant> enclosureData;
 
         if (enclosure->isNull() || (enclosure->url().isNull() && enclosure->title().isNull())) {
@@ -239,7 +238,8 @@ QVariantList NewsFeedsEngine::getEnclosures(QList<Syndication::EnclosurePtr> enc
 QVariantList NewsFeedsEngine::getItems(QList<Syndication::ItemPtr> items)
 {
     QVariantList itemsData;
-    foreach (const Syndication::ItemPtr &item, items) {
+    for (const auto& item: items)
+    {
         QMap<QString, QVariant> itemData;
 
         if (item->title().isNull() && item->content().isNull()) {
@@ -273,7 +273,8 @@ void NewsFeedsEngine::networkStatusChanged(bool isOnline)
 {
     if (isOnline) {
         // start updating the feeds
-        foreach(const QString &feedUrl, sources()) {
+        for(const auto& feedUrl: sources())
+        {
             updateSourceEvent(feedUrl);
         }
     }
