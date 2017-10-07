@@ -33,6 +33,8 @@
 
 #define MINIMUM_INTERVAL 5000 // 5 seconds
 
+const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(30);
+
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args)
 {
@@ -47,27 +49,36 @@ NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
 
     connect(&networkConfigurationManager, SIGNAL(onlineStateChanged(bool)),
             this, SLOT(networkStatusChanged(bool)));
+
+    iconsExpirationTimer = std::make_unique<QTimer>(this);
+        connect(iconsExpirationTimer.get(), SIGNAL(timeout()), this, SLOT(iconsExpired()));
+        iconsExpirationTimer->start(iconsExpirationTime);
 }
 
 bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
 {
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::sourceRequestEvent";
+
     // We do not have any special code to execute the
     // first time a source is requested, so we just call
     // updateSourceEvent().
     setData(source, Data());
-    loadingNews.removeAll(source);
-    loadingIcons.removeAll(source);
-    sourcesWithIcon.removeAll(source);
-    return updateSourceEvent(source);
+    loadingNews.remove(source);
+    loadingIcons.remove(source);
+    sourcesWithIcon.remove(source);
+
+    updateSourceEvent(source);
+
+    return true;
 }
 
 bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::updateSourceEvent";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::updateSourceEvent(source = " << source << ")";
 
     if (loadingNews.contains(source) || loadingIcons.contains(source)) {
       qCDebug(NEWSFEEDSENGINE) << "Source" << source << "still loading";
-      return true;
+      return false;
     }
 
     // load news
@@ -77,25 +88,31 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
             this, SLOT(feedReady(Syndication::Loader*,Syndication::FeedPtr,Syndication::ErrorCode)));
 
     loaderSourceMap.insert(loader, source);
-    loadingNews << source;
+    loadingNews.insert(source);
     loader->loadFrom(QUrl(source));
 
     //load icon
     if (!sourcesWithIcon.contains(source)) {
       qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
-      loadingIcons << source;
+      loadingIcons.insert(source);
       KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
       connect(job, SIGNAL(result(KJob*)), this, SLOT(iconReady(KJob*)));
     }
 
-    return true;
+    return false;
+}
+
+void NewsFeedsEngine::iconsExpired()
+{
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconExpired";
+    sourcesWithIcon.clear();
 }
 
 void NewsFeedsEngine::feedReady(Syndication::Loader* loader, Syndication::FeedPtr feed, Syndication::ErrorCode errorCode)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::feedReady";
-
-    const QString source = loaderSourceMap.take(loader);
+    QString source = loaderSourceMap.take(loader);
+    loaderSourceMap.remove(loader);
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::feedReady(source = " << source << ")";
 
     if (errorCode != Syndication::Success) {
       setData(source, QStringLiteral("Title"), i18n("Fetching feed failed."));
@@ -121,7 +138,8 @@ void NewsFeedsEngine::feedReady(Syndication::Loader* loader, Syndication::FeedPt
       setData(source, QStringLiteral("Items"), items);
     }
 
-    loadingNews.removeAll(source);
+
+    loadingNews.remove(source);
 }
 
 void NewsFeedsEngine::iconReady(KJob* kjob)
@@ -141,7 +159,7 @@ void NewsFeedsEngine::iconReady(KJob* kjob)
 
     setData(url, QStringLiteral("Image"), iconFile);
     sourcesWithIcon << url;
-    loadingIcons.removeAll(url);
+    loadingIcons.remove(url);
 }
 
 QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)
