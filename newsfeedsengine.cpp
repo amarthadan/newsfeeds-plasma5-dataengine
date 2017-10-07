@@ -33,12 +33,11 @@
 
 #define MINIMUM_INTERVAL 5000 // 5 seconds
 
-const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(30);
+const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(1);
 
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args)
-    , networkConfigurationManager(this)
-    , iconsExpirationTimer(this)
+    , networkConfigurationManager()
 {
     // We ignore any arguments - data engines do not have much use for them
     Q_UNUSED(args)
@@ -51,10 +50,6 @@ NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
 
     connect(&networkConfigurationManager, &QNetworkConfigurationManager::onlineStateChanged,
             this, &NewsFeedsEngine::networkStatusChanged);
-
-    // Icons considered expired when timer expires
-    connect(&iconsExpirationTimer, &QTimer::timeout, this, &NewsFeedsEngine::iconsExpired);
-    iconsExpirationTimer.start(iconsExpirationTime);
 }
 
 bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
@@ -78,27 +73,38 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 {
     qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::updateSourceEvent(source = " << source << ")";
 
-    if (loadingNews.contains(source) || loadingIcons.contains(source)) {
+    if (loadingNews.contains(source) || loadingIcons.contains(source))
+    {
         qCDebug(NEWSFEEDSENGINE) << "Source" << source << "still loading";
         return false;
     }
 
     // load news
     qCDebug(NEWSFEEDSENGINE) << "Loading news for source" << source;
+    loadingNews.insert(source);
+
     Syndication::Loader *loader = Syndication::Loader::create();
     connect(loader, &Syndication::Loader::loadingComplete, this,
             [this, source](Syndication::Loader* l, Syndication::FeedPtr fp, Syndication::ErrorCode ec)
             {
                 feedReady(std::move(source), l, std::move(fp), std::move(ec));
             });
-
-    loadingNews.insert(source);
     loader->loadFrom(QUrl(source));
 
     //load icon
-    if (!sourcesWithIcon.contains(source)) {
+    if (!sourcesWithIcon.contains(source))
+    {
         qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
         loadingIcons.insert(source);
+
+        auto timer = std::make_shared<QTimer>(this);
+        connect(timer.get(), &QTimer::timeout, this,
+                [this, source, timer]()
+                {
+                    iconExpired(std::move(source));
+                });
+        timer->start(iconsExpirationTime);
+
         KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
         connect(job, &KJob::result, this,
                 [this, source](KJob* kjob)
@@ -110,10 +116,10 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
     return false;
 }
 
-void NewsFeedsEngine::iconsExpired()
+void NewsFeedsEngine::iconExpired(QString source)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconExpired";
-    sourcesWithIcon.clear();
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconExpired(source = " << source << ")";
+    sourcesWithIcon.remove(source);
 }
 
 void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/, Syndication::FeedPtr feed, Syndication::ErrorCode errorCode)
@@ -142,7 +148,7 @@ void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/,
 
 void NewsFeedsEngine::iconReady(QString source, KJob* kjob)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconReady";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconReady(source = " << source << ")";
 
     KIO::FavIconRequestJob *job = dynamic_cast<KIO::FavIconRequestJob *>(kjob);
 
