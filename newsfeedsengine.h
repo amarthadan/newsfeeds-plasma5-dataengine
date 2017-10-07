@@ -70,19 +70,19 @@ protected Q_SLOTS:
 
 private Q_SLOTS:
     void networkStatusChanged(bool isOnline);
-    void feedReady(Syndication::Loader* loader,
+    void feedReady(QString source,
+                   Syndication::Loader* loader,
                    Syndication::FeedPtr feed,
                    Syndication::ErrorCode errorCode);
-    void iconReady(KJob* kjob);
+    void iconReady(QString source, KJob* kjob);
     void iconsExpired();
 
 private:
-    QHash<Syndication::Loader*, QString> loaderSourceMap;
     QSet<QString>   loadingNews;
     QSet<QString>   loadingIcons;
     QSet<QString>   sourcesWithIcon;
     QNetworkConfigurationManager networkConfigurationManager;
-    std::unique_ptr<QTimer> iconsExpirationTimer;
+    std::unique_ptr<QTimer>      iconsExpirationTimer;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);
     QVariantList getCategories(QList<Syndication::CategoryPtr> categories);
