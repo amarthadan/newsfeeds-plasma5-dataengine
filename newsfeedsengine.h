@@ -82,8 +82,6 @@ private:
     QVariantList getItems(QList<Syndication::ItemPtr> items);
     QVariantList getEnclosures(QList<Syndication::EnclosurePtr> enclosures);
 
-private:
-    bool    loading;
 };
 
 Q_DECLARE_LOGGING_CATEGORY(NEWSFEEDSENGINE)
