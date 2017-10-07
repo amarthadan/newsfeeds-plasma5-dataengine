@@ -57,6 +57,7 @@ class NewsFeedsEngine: public Plasma::DataEngine
 public:
 // every engine needs a constructor with these arguments
     NewsFeedsEngine(QObject* parent, const QVariantList &args);
+    ~NewsFeedsEngine();
 
 protected:
 // this virtual function is called when a new source is requested
