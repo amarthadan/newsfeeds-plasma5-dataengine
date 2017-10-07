@@ -75,14 +75,13 @@ private Q_SLOTS:
                    Syndication::FeedPtr feed,
                    Syndication::ErrorCode errorCode);
     void iconReady(QString source, KJob* kjob);
-    void iconsExpired();
+    void iconExpired(QString source);
 
 private:
     QSet<QString>   loadingNews;
     QSet<QString>   loadingIcons;
     QSet<QString>   sourcesWithIcon;
     QNetworkConfigurationManager networkConfigurationManager;
-    QTimer                       iconsExpirationTimer;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);
     QVariantList getCategories(QList<Syndication::CategoryPtr> categories);
