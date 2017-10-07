@@ -33,11 +33,11 @@
 
 #define MINIMUM_INTERVAL 5000 // 5 seconds
 
-const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(1);
+const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(30);
 
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args)
-    , networkConfigurationManager()
+    , networkConfigurationManager(this)
 {
     // We ignore any arguments - data engines do not have much use for them
     Q_UNUSED(args)
@@ -50,6 +50,11 @@ NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
 
     connect(&networkConfigurationManager, &QNetworkConfigurationManager::onlineStateChanged,
             this, &NewsFeedsEngine::networkStatusChanged);
+}
+
+NewsFeedsEngine::~NewsFeedsEngine()
+{
+    qCDebug(NEWSFEEDSENGINE) << "~NewsFeedsEngine";
 }
 
 bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
@@ -104,6 +109,7 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
                     iconExpired(std::move(source));
                 });
         timer->start(iconsExpirationTime);
+
 
         KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
         connect(job, &KJob::result, this,
