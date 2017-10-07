@@ -82,7 +82,7 @@ private:
     QSet<QString>   loadingIcons;
     QSet<QString>   sourcesWithIcon;
     QNetworkConfigurationManager networkConfigurationManager;
-    std::unique_ptr<QTimer>      iconsExpirationTimer;
+    QTimer                       iconsExpirationTimer;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);
     QVariantList getCategories(QList<Syndication::CategoryPtr> categories);
