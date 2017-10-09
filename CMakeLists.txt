@@ -72,9 +72,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(plasma_engine_newsfeeds MODULE ${newsfeeds_engine_SRCS})
 kcoreaddons_desktop_to_json(plasma_engine_newsfeeds plasma-dataengine-newsfeeds.desktop)
 
-#add c++14 compile flag - required
-include(CheckCXXCompilerFlag)
-
 target_link_libraries(plasma_engine_newsfeeds
     KF5::Plasma
     KF5::KIOGui
