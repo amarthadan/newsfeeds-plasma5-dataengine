@@ -1,41 +1,9 @@
-// the following header is required by the LGPL because
-// we are using the actual time engine code
-/*
- *   Copyright 2016 Michal Kimle <kimle.michal@gmail.com>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU Library General Public License as
- *   published by the Free Software Foundation; either version 2 or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details
- *
- *   You should have received a copy of the GNU Library General Public
- *   License along with this program; if not, write to the
- *   Free Software Foundation, Inc.,
- *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 // a standard include guard to prevent problems if the
 // header is included multiple times
 #ifndef NEWSFEEDSENGINE_H
 #define NEWSFEEDSENGINE_H
 
 #include <Plasma/DataEngine>
-
-#include <QNetworkConfigurationManager>
-#include <QHash>
-#include <QVariantList>
-#include <QSignalMapper>
-#include <QSet>
-#include <QLoggingCategory>
-#include <QTimer>
-
-#include <chrono>
-#include <memory>
 
 #include <Syndication/Loader>
 #include <Syndication/Feed>
@@ -47,8 +15,18 @@
 
 #include <KJob>
 
+#include <QNetworkConfigurationManager>
+#include <QHash>
+#include <QVariantList>
+#include <QSignalMapper>
+#include <QSet>
+#include <QLoggingCategory>
+#include <QTimer>
+
+#include <chrono>
+#include <memory>
 /**
- * This engine provides Atom and RSS news feeds in a unified way
+ * This engine provides Atom and RSS news feeds in an unified way
  */
 class NewsFeedsEngine: public Plasma::DataEngine
 {
@@ -79,9 +57,9 @@ private Q_SLOTS:
     void iconExpired(QString source);
 
 private:
-    QSet<QString>   loadingNews;
-    QSet<QString>   loadingIcons;
-    QSet<QString>   sourcesWithIcon;
+    QSet<QString> loadingNews;
+    QSet<QString> loadingIcons;
+    QSet<QString> sourcesWithIcon;
     QNetworkConfigurationManager networkConfigurationManager;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);

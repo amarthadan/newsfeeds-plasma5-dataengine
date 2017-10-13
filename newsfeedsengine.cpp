@@ -1,51 +1,27 @@
-// the following header is required by the LGPL because
-// we are using the actual time engine code
-/*
- *   Copyright 2016 Michal Kimle <kimle.michal@gmail.com>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU Library General Public License as
- *   published by the Free Software Foundation; either version 2 or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details
- *
- *   You should have received a copy of the GNU Library General Public
- *   License along with this program; if not, write to the
- *   Free Software Foundation, Inc.,
- *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 #include "newsfeedsengine.h"
+
+#include <Syndication/Image>
+
+#include <KLocalizedString>
+#include <KIO/FavIconRequestJob>
 
 #include <QUrl>
 #include <QString>
 #include <QVariant>
 #include <QMap>
 
-#include <KLocalizedString>
-#include <KIO/FavIconRequestJob>
-
-#include <Syndication/Image>
-
 #define MINIMUM_INTERVAL 5000 // 5 seconds
 
 const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(30);
 
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
-    : Plasma::DataEngine(parent, args)
-    , networkConfigurationManager(this)
+    : Plasma::DataEngine(parent, args), networkConfigurationManager(this)
 {
     // We ignore any arguments - data engines do not have much use for them
     Q_UNUSED(args)
 
     // This prevents applets from setting an unnecessarily high
     // update interval and using too much CPU.
-    // In the case of a clock that only has second precision,
-    // a third of a second should be more than enough.
     setMinimumPollingInterval(MINIMUM_INTERVAL);
 
     connect(&networkConfigurationManager, &QNetworkConfigurationManager::onlineStateChanged,
@@ -61,9 +37,6 @@ bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
 {
     qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::sourceRequestEvent";
 
-    // We do not have any special code to execute the
-    // first time a source is requested, so we just call
-    // updateSourceEvent().
     setData(source, Data());
     loadingNews.remove(source);
     loadingIcons.remove(source);
@@ -76,10 +49,9 @@ bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
 
 bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::updateSourceEvent(source = " << source << ")";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::updateSourceEvent(source =" << source << ")";
 
-    if (loadingNews.contains(source) || loadingIcons.contains(source))
-    {
+    if (loadingNews.contains(source) || loadingIcons.contains(source)) {
         qCDebug(NEWSFEEDSENGINE) << "Source" << source << "still loading";
         return false;
     }
@@ -97,8 +69,7 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
     loader->loadFrom(QUrl(source));
 
     //load icon
-    if (!sourcesWithIcon.contains(source))
-    {
+    if (!sourcesWithIcon.contains(source)) {
         qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
         loadingIcons.insert(source);
 
@@ -124,20 +95,19 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 
 void NewsFeedsEngine::iconExpired(QString source)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconExpired(source = " << source << ")";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconExpired(source =" << source << ")";
     sourcesWithIcon.remove(source);
 }
 
 void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/, Syndication::FeedPtr feed, Syndication::ErrorCode errorCode)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::feedReady(source = " << source << ")";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::feedReady(source =" << source << ")";
 
     if (errorCode != Syndication::Success) {
+        qCWarning(NEWSFEEDSENGINE) << "Fetching feed" << source << "failed";
         setData(source, QStringLiteral("Title"), i18n("Fetching feed failed."));
         setData(source, QStringLiteral("Link"), source);
-    }
-    else
-    {
+    } else {
         setData(source, QStringLiteral("Title"),       feed->title());
         setData(source, QStringLiteral("Link"),        feed->link());
         setData(source, QStringLiteral("Description"), feed->description());
@@ -148,45 +118,37 @@ void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/,
         setData(source, QStringLiteral("Items"),       getItems(feed->items()));
     }
 
-
     loadingNews.remove(source);
 }
 
 void NewsFeedsEngine::iconReady(QString source, KJob* kjob)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconReady(source = " << source << ")";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconReady(source =" << source << ")";
 
     KIO::FavIconRequestJob *job = dynamic_cast<KIO::FavIconRequestJob *>(kjob);
 
-    if (job)
-    {
+    if (job) {
         QString iconFile;
 
-        if (job->error() != 0)
-        {
-            qCDebug(NEWSFEEDSENGINE) << "Error during icon download, setting 'NO_ICON' flag";
+        if (job->error() != 0) {
+            qCWarning(NEWSFEEDSENGINE) << "Error during icon download for" << source << ", setting 'NO_ICON' flag";
             iconFile = "NO_ICON";
-        }
-        else
-        {
+        } else {
             iconFile = job->iconFile();
         }
 
         setData(source, QStringLiteral("Image"), iconFile);
         sourcesWithIcon.insert(source);
         loadingIcons.remove(source);
-    }
-    else
-    {
-        qCDebug(NEWSFEEDSENGINE) << "FavIconRequestJob cast failed";
+    } else {
+        qCCritical(NEWSFEEDSENGINE) << "FavIconRequestJob cast failed";
     }
 }
 
 QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)
 {
     QVariantList authorsData;
-    for (const auto& a: authors)
-    {
+    for (const auto& a: authors) {
         if (a->isNull() || (a->name().isNull() && a->email().isNull() && a->uri().isNull())) {
             continue;
         }
@@ -206,8 +168,7 @@ QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)
 QVariantList NewsFeedsEngine::getCategories(QList<Syndication::CategoryPtr> categories)
 {
     QVariantList categoriesData;
-    for(const auto& category: categories)
-    {
+    for(const auto& category: categories) {
         QMap<QString, QVariant> categoryData;
 
         if (category->isNull() || (category->term().isNull() && category->scheme().isNull() && category->label().isNull())) {
@@ -227,8 +188,7 @@ QVariantList NewsFeedsEngine::getCategories(QList<Syndication::CategoryPtr> cate
 QVariantList NewsFeedsEngine::getEnclosures(QList<Syndication::EnclosurePtr> enclosures)
 {
     QVariantList enclosuresData;
-    for(const auto& enclosure: enclosures)
-    {
+    for(const auto& enclosure: enclosures) {
         QMap<QString, QVariant> enclosureData;
 
         if (enclosure->isNull() || (enclosure->url().isNull() && enclosure->title().isNull())) {
@@ -250,8 +210,7 @@ QVariantList NewsFeedsEngine::getEnclosures(QList<Syndication::EnclosurePtr> enc
 QVariantList NewsFeedsEngine::getItems(QList<Syndication::ItemPtr> items)
 {
     QVariantList itemsData;
-    for (const auto& item: items)
-    {
+    for (const auto& item: items) {
         QMap<QString, QVariant> itemData;
 
         if (item->title().isNull() && item->content().isNull()) {
@@ -285,8 +244,7 @@ void NewsFeedsEngine::networkStatusChanged(bool isOnline)
 {
     if (isOnline) {
         // start updating the feeds
-        for(const auto& feedUrl: sources())
-        {
+        for(const auto& feedUrl: sources()) {
             updateSourceEvent(feedUrl);
         }
     }
