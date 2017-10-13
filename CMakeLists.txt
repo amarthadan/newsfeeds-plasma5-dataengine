@@ -65,6 +65,10 @@ set(newsfeeds_engine_SRCS
     newsfeedsengine.cpp
 )
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 add_library(plasma_engine_newsfeeds MODULE ${newsfeeds_engine_SRCS})
 kcoreaddons_desktop_to_json(plasma_engine_newsfeeds plasma-dataengine-newsfeeds.desktop)
 
