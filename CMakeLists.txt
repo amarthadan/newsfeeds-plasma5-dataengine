@@ -2,7 +2,7 @@ project(plasma-newsfeeds)
 
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
-set(QT_MIN_VERSION "5.4.1")
+set(QT_MIN_VERSION "5.4.0")
 set(KF5_MIN_VERSION "5.9.0")
 find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Core Widgets Quick QuickWidgets Network)
 find_package(ECM REQUIRED NO_MODULE)
