@@ -1,6 +1,9 @@
 #include "newsfeedsengine.h"
 
+#include "fileretriever.h"
+
 #include <Syndication/Image>
+#include <Syndication/DataRetriever>
 
 #include <KLocalizedString>
 #include <KIO/FavIconRequestJob>
@@ -66,7 +69,7 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
             {
                 feedReady(std::move(source), l, std::move(fp), std::move(ec));
             });
-    loader->loadFrom(QUrl(source));
+    loader->loadFrom(QUrl(source), new FileRetriever);
 
     //load icon
     if (!sourcesWithIcon.contains(source)) {

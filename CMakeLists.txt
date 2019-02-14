@@ -23,6 +23,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(-DTRANSLATION_DOMAIN=\"plasma_engine_newsfeeds\")
 
 set(newsfeeds_engine_SRCS
+    fileretriever.cpp
     newsfeedsengine.cpp
 )
 
