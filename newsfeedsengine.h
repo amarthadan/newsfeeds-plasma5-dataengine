@@ -14,12 +14,13 @@
 #include <Syndication/Global>
 
 #include <KJob>
+#include <KIO/FavIconRequestJob>
 
 #include <QNetworkConfigurationManager>
 #include <QHash>
 #include <QVariantList>
-#include <QSignalMapper>
 #include <QSet>
+#include <QHash>
 #include <QLoggingCategory>
 #include <QTimer>
 
@@ -57,8 +58,8 @@ private Q_SLOTS:
     void iconExpired(QString source);
 
 private:
-    QSet<QString> loadingNews;
-    QSet<QString> loadingIcons;
+    QHash<QString, Syndication::Loader*> loadingNews;
+    QHash<QString, KIO::FavIconRequestJob*> loadingIcons;
     QSet<QString> sourcesWithIcon;
     QNetworkConfigurationManager networkConfigurationManager;
 

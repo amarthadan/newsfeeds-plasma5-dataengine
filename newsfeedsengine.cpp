@@ -6,7 +6,6 @@
 #include <Syndication/DataRetriever>
 
 #include <KLocalizedString>
-#include <KIO/FavIconRequestJob>
 
 #include <QUrl>
 #include <QString>
@@ -38,11 +37,20 @@ NewsFeedsEngine::~NewsFeedsEngine()
 
 bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
 {
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::sourceRequestEvent";
+    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::sourceRequestEvent(source =" << source << ")";
 
     setData(source, Data());
-    loadingNews.remove(source);
-    loadingIcons.remove(source);
+
+    Syndication::Loader * loader = loadingNews.take(source);
+    if (loader != nullptr) {
+      loader->abort();
+    }
+
+    KIO::FavIconRequestJob *job = loadingIcons.take(source);
+    if (job != nullptr) {
+      job->kill(KJob::Quietly);
+    }
+
     sourcesWithIcon.remove(source);
 
     updateSourceEvent(source);
@@ -61,9 +69,9 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 
     // load news
     qCDebug(NEWSFEEDSENGINE) << "Loading news for source" << source;
-    loadingNews.insert(source);
 
     Syndication::Loader *loader = Syndication::Loader::create();
+    loadingNews.insert(source, loader);
     connect(loader, &Syndication::Loader::loadingComplete, this,
             [this, source](Syndication::Loader* l, Syndication::FeedPtr fp, Syndication::ErrorCode ec)
             {
@@ -74,7 +82,6 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
     //load icon
     if (!sourcesWithIcon.contains(source)) {
         qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
-        loadingIcons.insert(source);
 
         auto timer = std::make_shared<QTimer>(this);
         connect(timer.get(), &QTimer::timeout, this,
@@ -86,6 +93,7 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
 
 
         KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
+        loadingIcons.insert(source, job);
         connect(job, &KJob::result, this,
                 [this, source](KJob* kjob)
                 {
