@@ -2,15 +2,14 @@ project(plasma-newsfeeds)
 
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
-set(QT_MIN_VERSION "5.4.0")
-set(KF5_MIN_VERSION "5.9.0")
+set(QT_MIN_VERSION "5.5.0")
+set(KF5_MIN_VERSION "5.21.0")
 find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Core Widgets Quick QuickWidgets Network)
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR})
 
 find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
-Plasma PlasmaQuick I18n GlobalAccel KDELibs4Support)
-find_package(KF5Syndication)
+Plasma PlasmaQuick I18n GlobalAccel Syndication KIO)
 
 include(KDECMakeSettings)
 include(KDECompilerSettings)
