@@ -142,13 +142,12 @@ void NewsFeedsEngine::iconReady(QString source, KJob* kjob)
         QString iconFile;
 
         if (job->error() != 0) {
-            qCWarning(NEWSFEEDSENGINE) << "Error during icon download for" << source << ", setting 'NO_ICON' flag";
-            iconFile = "NO_ICON";
+            qCWarning(NEWSFEEDSENGINE) << "Error during icon download for" << source << ".";
         } else {
             iconFile = job->iconFile();
+            setData(source, QStringLiteral("Image"), iconFile);
         }
 
-        setData(source, QStringLiteral("Image"), iconFile);
         sourcesWithIcon.insert(source);
         loadingIcons.remove(source);
     } else {
