@@ -14,8 +14,6 @@
 
 #define MINIMUM_INTERVAL 5000 // 5 seconds
 
-const std::chrono::minutes NewsFeedsEngine::iconsExpirationTime = std::chrono::minutes(30);
-
 NewsFeedsEngine::NewsFeedsEngine(QObject* parent, const QVariantList& args)
     : Plasma::DataEngine(parent, args), networkConfigurationManager(this)
 {
@@ -46,12 +44,10 @@ bool NewsFeedsEngine::sourceRequestEvent(const QString &source)
       loader->abort();
     }
 
-    KIO::FavIconRequestJob *job = loadingIcons.take(source);
+    FaviconRequestJob *job = loadingIcons.take(source);
     if (job != nullptr) {
-      job->kill(KJob::Quietly);
+      job->abort();
     }
-
-    sourcesWithIcon.remove(source);
 
     updateSourceEvent(source);
 
@@ -80,34 +76,17 @@ bool NewsFeedsEngine::updateSourceEvent(const QString &source)
     loader->loadFrom(QUrl(source), new FileRetriever);
 
     //load icon
-    if (!sourcesWithIcon.contains(source)) {
-        qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
+    qCDebug(NEWSFEEDSENGINE) << "Loading icon for source" << source;
 
-        auto timer = std::make_shared<QTimer>(this);
-        connect(timer.get(), &QTimer::timeout, this,
-                [this, source, timer]()
-                {
-                    iconExpired(std::move(source));
-                });
-        timer->start(iconsExpirationTime);
-
-
-        KIO::FavIconRequestJob *job = new KIO::FavIconRequestJob(QUrl(source));
-        loadingIcons.insert(source, job);
-        connect(job, &KJob::result, this,
-                [this, source](KJob* kjob)
-                {
-                    iconReady(std::move(source), kjob);
-                });
-    }
+    FaviconRequestJob *job = new FaviconRequestJob(QUrl(source));
+    loadingIcons.insert(source, job);
+    connect(job, &FaviconRequestJob::iconReady, this,
+            [this, source](FaviconRequestJob* job)
+            {
+                iconReady(std::move(source), job);
+            });
 
     return false;
-}
-
-void NewsFeedsEngine::iconExpired(QString source)
-{
-    qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconExpired(source =" << source << ")";
-    sourcesWithIcon.remove(source);
 }
 
 void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/, Syndication::FeedPtr feed, Syndication::ErrorCode errorCode)
@@ -132,27 +111,20 @@ void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/,
     loadingNews.remove(source);
 }
 
-void NewsFeedsEngine::iconReady(QString source, KJob* kjob)
+void NewsFeedsEngine::iconReady(QString source, FaviconRequestJob* job)
 {
     qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::iconReady(source =" << source << ")";
 
-    KIO::FavIconRequestJob *job = dynamic_cast<KIO::FavIconRequestJob *>(kjob);
+    QString iconFile;
 
-    if (job) {
-        QString iconFile;
-
-        if (job->error() != 0) {
-            qCWarning(NEWSFEEDSENGINE) << "Error during icon download for" << source << ".";
-        } else {
-            iconFile = job->iconFile();
-            setData(source, QStringLiteral("Image"), iconFile);
-        }
-
-        sourcesWithIcon.insert(source);
-        loadingIcons.remove(source);
+    if (job->errorCode() != 0) {
+        qCWarning(NEWSFEEDSENGINE) << "Error during icon download for" << source << ".";
     } else {
-        qCCritical(NEWSFEEDSENGINE) << "FavIconRequestJob cast failed";
+        iconFile = job->iconFile();
+        setData(source, QStringLiteral("Image"), iconFile);
     }
+
+    loadingIcons.remove(source);
 }
 
 QVariantList NewsFeedsEngine::getAuthors(QList<Syndication::PersonPtr> authors)

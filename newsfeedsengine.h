@@ -3,6 +3,8 @@
 #ifndef NEWSFEEDSENGINE_H
 #define NEWSFEEDSENGINE_H
 
+#include "faviconrequestjob.h"
+
 #include <Plasma/DataEngine>
 
 #include <Syndication/Loader>
@@ -12,9 +14,6 @@
 #include <Syndication/Category>
 #include <Syndication/Enclosure>
 #include <Syndication/Global>
-
-#include <KJob>
-#include <KIO/FavIconRequestJob>
 
 #include <QNetworkConfigurationManager>
 #include <QHash>
@@ -54,21 +53,17 @@ private Q_SLOTS:
                    Syndication::Loader* loader,
                    Syndication::FeedPtr feed,
                    Syndication::ErrorCode errorCode);
-    void iconReady(QString source, KJob* kjob);
-    void iconExpired(QString source);
+    void iconReady(QString source, FaviconRequestJob* job);
 
 private:
     QHash<QString, Syndication::Loader*> loadingNews;
-    QHash<QString, KIO::FavIconRequestJob*> loadingIcons;
-    QSet<QString> sourcesWithIcon;
+    QHash<QString, FaviconRequestJob*> loadingIcons;
     QNetworkConfigurationManager networkConfigurationManager;
 
     QVariantList getAuthors(QList<Syndication::PersonPtr> authors);
     QVariantList getCategories(QList<Syndication::CategoryPtr> categories);
     QVariantList getItems(QList<Syndication::ItemPtr> items);
     QVariantList getEnclosures(QList<Syndication::EnclosurePtr> enclosures);
-
-    static const std::chrono::minutes iconsExpirationTime;
 };
 
 Q_DECLARE_LOGGING_CATEGORY(NEWSFEEDSENGINE)

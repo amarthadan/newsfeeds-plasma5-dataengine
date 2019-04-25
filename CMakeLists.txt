@@ -9,7 +9,7 @@ find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR})
 
 find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
-Plasma PlasmaQuick I18n GlobalAccel Syndication KIO)
+Plasma PlasmaQuick I18n GlobalAccel Syndication)
 
 include(KDECMakeSettings)
 include(KDECompilerSettings)
@@ -24,6 +24,8 @@ add_definitions(-DTRANSLATION_DOMAIN=\"plasma_engine_newsfeeds\")
 
 set(newsfeeds_engine_SRCS
     fileretriever.cpp
+    faviconstorage.cpp
+    faviconrequestjob.cpp
     newsfeedsengine.cpp
 )
 
@@ -32,7 +34,6 @@ kcoreaddons_desktop_to_json(plasma_engine_newsfeeds plasma-dataengine-newsfeeds.
 
 target_link_libraries(plasma_engine_newsfeeds
     KF5::Plasma
-    KF5::KIOGui
     KF5::I18n
     KF5::Service
     KF5::GlobalAccel
