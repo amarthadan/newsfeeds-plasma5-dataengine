@@ -95,8 +95,14 @@ void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/,
 
     if (errorCode != Syndication::Success) {
         qCWarning(NEWSFEEDSENGINE) << "Fetching feed" << source << "failed";
-        setData(source, QStringLiteral("Title"), i18n("Fetching feed failed."));
-        setData(source, QStringLiteral("Link"), source);
+        setData(source, QStringLiteral("Title"),       i18n("Fetching feed failed."));
+        setData(source, QStringLiteral("Link"),        source);
+        removeData(source, QStringLiteral("Description"));
+        removeData(source, QStringLiteral("Language"));
+        removeData(source, QStringLiteral("Copyright"));
+        removeData(source, QStringLiteral("Authors"));
+        removeData(source, QStringLiteral("Categories"));
+        removeData(source, QStringLiteral("Items"));
     } else {
         setData(source, QStringLiteral("Title"),       feed->title());
         setData(source, QStringLiteral("Link"),        feed->link());
