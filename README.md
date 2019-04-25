@@ -10,10 +10,10 @@ Package will be available soon...
 ### Source
 
 #### Requirements
-* [CMake 2.8.12+](https://cmake.org/) (Arch Linux package `cmake`)
-* [Extra CMake Modules](http://api.kde.org/ecm/manual/ecm.7.html) (Arch Linux package `extra-cmake-modules`)
-* [Qt 5.4+](https://www.qt.io/) (Arch Linux package `qt`)
-* [KDE Frameworks 5.9+](https://api.kde.org/frameworks/) (Arch Linux package `kf5`)
+* [CMake 2.8.12+](https://cmake.org/)
+* [Extra CMake Modules](https://api.kde.org/ecm/)
+* [Qt 5.5+](https://www.qt.io/)
+* [KDE Frameworks 5.21+](https://api.kde.org/frameworks/)
 
 #### Compile and install
 ```bash
@@ -24,7 +24,7 @@ cd build
 cmake .. \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_BUILD_TYPE=Release \
-    -DLIB_INSTALL_DIR=lib \
+    -DKDE_INSTALL_LIBDIR=lib \
     -DKDE_INSTALL_USE_QT_SYS_PATHS=ON
 make
 sudo make install
