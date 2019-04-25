@@ -1,14 +1,11 @@
 #include "fileretriever.h"
 
-#include <KIO/TransferJob>
-
 #include <QBuffer>
-#include <QTimer>
+#include <QNetworkAccessManager>
 
 struct FileRetriever::FileRetrieverPrivate {
     FileRetrieverPrivate()
-        : buffer(nullptr),
-          lastError(0), job(nullptr)
+        : buffer(nullptr), reply(nullptr), lastError(0), httpRequestAborted(false)
     {
     }
 
@@ -18,13 +15,20 @@ struct FileRetriever::FileRetrieverPrivate {
     }
 
     QBuffer *buffer;
+    QNetworkAccessManager nam;
+    QNetworkReply *reply;
     int lastError;
-    KIO::TransferJob *job;
+    bool httpRequestAborted;
 };
 
 FileRetriever::FileRetriever()
     : d(new FileRetrieverPrivate)
 {
+    d->nam.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+#ifndef QT_NO_SSL
+    connect(&d->nam, &QNetworkAccessManager::sslErrors,
+            this, &FileRetriever::sslErrors);
+#endif
 }
 
 FileRetriever::~FileRetriever()
@@ -41,34 +45,62 @@ void FileRetriever::retrieveData(const QUrl &url)
     d->buffer = new QBuffer;
     d->buffer->open(QIODevice::WriteOnly);
 
+    d->httpRequestAborted = false;
+
     QUrl u = url;
 
     if (u.scheme() == QLatin1String("feed")) {
         u.setScheme(QStringLiteral("http"));
     }
 
-    d->job = KIO::get(u, KIO::NoReload, KIO::HideProgressInfo);
+    qCDebug(FILERETRIEVER) << "downloading" << u;
+    QNetworkRequest request = QNetworkRequest(u);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "KDE Plasma NewsfeedsEngine");
+    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
 
-    d->job->addMetaData(QStringLiteral("UserAgent"), QStringLiteral("KDE Plasma NewsfeedsEngine"));
-    d->job->addMetaData(QStringLiteral("cache"), QStringLiteral("refresh"));
-
-    QTimer::singleShot(30 * 1000, this, &FileRetriever::slotTimeout);
-
-    connect(d->job, &KIO::TransferJob::data, this, &FileRetriever::slotData);
-    connect(d->job, &KIO::TransferJob::result, this, &FileRetriever::slotResult);
-    connect(d->job, &KIO::TransferJob::permanentRedirection, this, &FileRetriever::slotPermanentRedirection);
+    d->reply = d->nam.get(request);
+    connect(d->reply, &QNetworkReply::finished, this, &FileRetriever::httpFinished);
+    connect(d->reply, &QIODevice::readyRead, this, &FileRetriever::httpReadyRead);
 }
 
-void FileRetriever::slotTimeout()
+void FileRetriever::httpReadyRead()
 {
-    abort();
+    d->buffer->write(d->reply->readAll());
+}
+
+void FileRetriever::httpFinished()
+{
+    if (d->httpRequestAborted) {
+        d->reply->deleteLater();
+        d->reply = nullptr;
+        return;
+    }
+
+    qCDebug(FILERETRIEVER) << "finished downloading" << d->reply->request().url();
+
+    d->lastError = d->reply->error();
+    d->reply->deleteLater();
+    d->reply = nullptr;
+
+    QByteArray data = d->buffer->buffer();
+    data.detach();
 
     delete d->buffer;
     d->buffer = nullptr;
 
-    d->lastError = KIO::ERR_SERVER_TIMEOUT;
+    emit dataRetrieved(data, d->lastError == QNetworkReply::NoError);
+}
 
-    emit dataRetrieved(QByteArray(), false);
+void FileRetriever::abort()
+{
+    if (d->reply) {
+      qCDebug(FILERETRIEVER) << "aborting" << d->reply->request().url();
+
+      d->httpRequestAborted = true;
+      d->reply->abort();
+      delete d->buffer;
+      d->buffer = nullptr;
+    }
 }
 
 int FileRetriever::errorCode() const
@@ -76,33 +108,11 @@ int FileRetriever::errorCode() const
     return d->lastError;
 }
 
-void FileRetriever::slotData(KIO::Job *, const QByteArray &data)
+#ifndef QT_NO_SSL
+void FileRetriever::sslErrors(QNetworkReply *, const QList<QSslError> &errors)
 {
-    d->buffer->write(data.data(), data.size());
+  qCCritical(FILERETRIEVER) << "SSL errors:" << errors;
 }
+#endif
 
-void FileRetriever::slotResult(KJob *job)
-{
-    QByteArray data = d->buffer->buffer();
-    data.detach();
-
-    delete d->buffer;
-    d->buffer = nullptr;
-
-    d->lastError = job->error();
-    emit dataRetrieved(data, d->lastError == 0);
-}
-
-void FileRetriever::slotPermanentRedirection(KIO::Job *, const QUrl &,
-        const QUrl &newUrl)
-{
-    emit permanentRedirection(newUrl);
-}
-
-void FileRetriever::abort()
-{
-    if (d->job) {
-        d->job->kill();
-        d->job = nullptr;
-    }
-}
+Q_LOGGING_CATEGORY(FILERETRIEVER, "fileretriever")

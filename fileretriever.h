@@ -3,12 +3,13 @@
 
 #include <Syndication/DataRetriever>
 
-#include <KIO/Job>
-#include <KJob>
-
 #include <QUrl>
 #include <QString>
 #include <QByteArray>
+#include <QNetworkReply>
+#include <QList>
+#include <QSslError>
+#include <QLoggingCategory>
 
 class FileRetriever: public Syndication::DataRetriever
 {
@@ -30,8 +31,8 @@ public:
     /**
      * @return The error code for the last process of retrieving data.
      * The returned numbers correspond directly to the error codes
-     * <a href="http://developer.kde.org/documentation/library/cvs-api/classref/kio/KIO.html#Error">as
-     * defined by KIO</a>.
+     * <a href="https://doc.qt.io/qt-5/qnetworkreply.html#NetworkError-enum">as
+     * defined by QNetworkReply</a>.
      */
     int errorCode() const override;
 
@@ -40,29 +41,12 @@ public:
      */
     void abort() override;
 
-Q_SIGNALS:
-    /**
-     * Signals a permanent redirection. The redirection itself is
-     * handled internally, so you don't need to call Loader::loadFrom()
-     * with the new URL. This signal is useful in case you want to
-     * notify the user, or adjust a database entry.
-     *
-     * @param url the new URL after the redirection
-     *
-     * @see Loader::loadFrom()
-     */
-    void permanentRedirection(const QUrl &url);
-
-protected Q_SLOTS:
-
-    void slotTimeout();
-
 private Q_SLOTS:
-
-    void slotData(KIO::Job *job, const QByteArray &data);
-    void slotResult(KJob *job);
-    void slotPermanentRedirection(KIO::Job *job, const QUrl &fromUrl,
-                                  const QUrl &toUrl);
+    void httpFinished();
+    void httpReadyRead();
+#ifndef QT_NO_SSL
+    void sslErrors(QNetworkReply *, const QList<QSslError> &errors);
+#endif
 
 private:
     FileRetriever(const FileRetriever &other);
@@ -71,4 +55,7 @@ private:
     struct FileRetrieverPrivate;
     FileRetrieverPrivate *const d;
 };
+
+Q_DECLARE_LOGGING_CATEGORY(FILERETRIEVER)
+
 #endif // FILERETIREVER_H
