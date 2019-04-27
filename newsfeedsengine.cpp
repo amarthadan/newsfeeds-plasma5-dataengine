@@ -94,7 +94,7 @@ void NewsFeedsEngine::feedReady(QString source, Syndication::Loader* /*loader*/,
     qCDebug(NEWSFEEDSENGINE) << "NewsFeedsEngine::feedReady(source =" << source << ")";
 
     if (errorCode != Syndication::Success) {
-        qCWarning(NEWSFEEDSENGINE) << "Fetching feed" << source << "failed";
+        qCDebug(NEWSFEEDSENGINE) << "Fetching feed" << source << "failed." << "Error:" << errorCode;
         setData(source, QStringLiteral("Title"),       i18n("Fetching feed failed."));
         setData(source, QStringLiteral("Link"),        source);
         removeData(source, QStringLiteral("Description"));
@@ -124,7 +124,7 @@ void NewsFeedsEngine::iconReady(QString source, FaviconRequestJob* job)
     QString iconFile;
 
     if (job->errorCode() != 0) {
-        qCWarning(NEWSFEEDSENGINE) << "Error during icon download for" << source << ".";
+        qCDebug(NEWSFEEDSENGINE) << "Error during icon download for" << source << "." << "Error:" << job->errorCode();
     } else {
         iconFile = job->iconFile();
         setData(source, QStringLiteral("Image"), iconFile);

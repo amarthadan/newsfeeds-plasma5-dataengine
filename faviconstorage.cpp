@@ -76,13 +76,13 @@ QString FavIconStorage::saveIcon(QByteArray *data, const QUrl &url)
             if (saveFile.open(QIODevice::WriteOnly) && img.save(&saveFile, "PNG") && saveFile.commit()) {
                 iconFile = localPath;
             } else {
-                qCCritical(FAVICONSTORAGE) << "Couldn't write file" << localPath;
+                qCDebug(FAVICONSTORAGE) << "Couldn't write file" << localPath;
             }
         } else {
-            qCCritical(FAVICONSTORAGE) << "QImageReader read() returned a null image";
+            qCDebug(FAVICONSTORAGE) << "QImageReader read() returned a null image";
         }
     } else {
-        qCCritical(FAVICONSTORAGE) << "QImageReader canRead returned false";
+        qCDebug(FAVICONSTORAGE) << "QImageReader canRead returned false";
     }
 
     return iconFile;
